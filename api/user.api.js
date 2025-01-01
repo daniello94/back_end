@@ -10,7 +10,7 @@ const authenticate = require("../middleware/authenticate");
 router.post("/check-email", userController.checkEmailExistence);
 
 //towrzenie konta z rola BigBoss
-router.post("/newAccounted",userController.createBigBoss);
+router.post("/newAccounted", userController.createBigBoss);
 
 //dodawanie nowego uzytkownika
 router.post('/users', authenticate, isRole(["Admin", "BigBoss"]), userController.createUser);
@@ -26,8 +26,13 @@ router.post("/newRecords", authenticate, userController.addPlaceWork);
 
 //logowanie
 router.post("/login", userController.loginUser);
+
 //sprawdzanie sesji
 router.get("/check-session", authenticate, userController.checkSession);
+
+//odswierzanie sesji automatyczne 
+router.get("/refresh-token", userController.refreshUser);
+
 // wylogowanie
 router.post('/logout', userController.logoutUser);
 

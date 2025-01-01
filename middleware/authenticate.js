@@ -4,10 +4,7 @@ const Company = require('../models/Company');
 
 const authenticate = async (req, res, next) => {
     try {
-        // Pobieranie tokenu z ciasteczek
         const token = req.cookies.token;
-        console.log('Pobrany token z ciasteczek:', token);
-
         if (!token) {
             return res.status(401).json({ message: 'Brak tokenu. Musisz być zalogowany.' });
         }
@@ -17,7 +14,6 @@ const authenticate = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Rozkodowany token:', decoded);
 
         const user = await User.findById(decoded._id);
         if (!user) {
@@ -32,14 +28,12 @@ const authenticate = async (req, res, next) => {
 
         if (user.idCompany) {
             const company = await Company.findById(user.idCompany);
-            console.log('Firma użytkownika:', company);
             if (company && company.statusCompany) {
                 return res.status(403).json({ message: 'Konto firmy zostało zablokowane, nie można się zalogować' });
             }
         }
 
         req.user = user;
-        console.log("Zalogowany użytkownik (middleware):", req.user);
         next();
     } catch (error) {
         console.error('Błąd uwierzytelniania:', error.message);

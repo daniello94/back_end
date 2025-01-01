@@ -15,20 +15,20 @@ const productRoutes = require("./api/product.api");
 const orderRoutes = require("./api/order.api");
 
 const corsOptions = {
-    origin: process.env.CLIENT_ORIGIN, 
-    credentials: true, 
-    optionsSuccessStatus: 200 
+    origin: [process.env.CLIENT_ORIGIN],
+    credentials: true,
+    optionsSuccessStatus: 200
 };
 
-app.use(helmet()); 
-app.use(express.json()); 
-app.use(cookieParser()); 
-app.use(cors(corsOptions)); 
+app.use(helmet());
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors(corsOptions));
 
 
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 100, 
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     message: 'Za dużo żądań z tego adresu IP, spróbuj ponownie później.'
 });
 app.use(limiter);
@@ -38,7 +38,6 @@ app.use("/company", companyRoutes);
 app.use("/project", projectRoutes);
 app.use("/", productRoutes);
 app.use("/", orderRoutes);
-
 
 app.get('/', (req, res) => {
     res.status(200).json({ message: "Task Order API is running" });

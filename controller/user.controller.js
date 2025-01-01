@@ -66,7 +66,6 @@ async function sendVerificationEmail(userEmail, verificationToken) {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log('E-mail weryfikacyjny został wysłany.');
     } catch (error) {
         console.error(`Błąd podczas wysyłania e-maila: ${error}`);
     }
@@ -120,14 +119,11 @@ exports.verifyUser = async (req, res) => {
             return res.status(400).json({ message: 'Nieprawidłowy token weryfikacyjny' });
         }
         if (new Date() > user.tokenUsedAt) {
-            console.log('Token weryfikacyjny wygasł');
             user.verificationToken = null; // opcjonalnie usuń wartość tokenu
-          } else {
-            console.log('Token weryfikacyjny jest aktywny');
-          }
+        }
 
         user.isVerified = true;
-      user.tokenUsedAt = new Date(); // Ustawienie czasu użycia tokena
+        user.tokenUsedAt = new Date(); // Ustawienie czasu użycia tokena
         await user.save();
 
         res.status(200).json({ message: 'Konto zostało zweryfikowane pomyślnie' });
@@ -246,7 +242,6 @@ exports.createUser = async (req, res) => {
                 console.error("Błąd podczas wysyłania e-maila:", err);
                 return res.status(500).json({ message: 'Użytkownik utworzony, ale wystąpił błąd podczas wysyłania e-maila', error: err.message });
             } else {
-                console.log("Wysłano e-mail:", info.response);
                 return res.status(201).json({ message: 'Użytkownik utworzony pomyślnie. Wysłano e-mail.', user });
             }
         });
@@ -461,7 +456,7 @@ exports.loginUser = async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false,
+            secure: true,
             sameSite: 'None',
             maxAge: 24 * 60 * 60 * 1000,
         });
@@ -481,6 +476,10 @@ exports.loginUser = async (req, res) => {
 };
 
 exports.checkSession = (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Sesja wygasła lub użytkownik nie jest zalogowany.' });
+    }
+
     res.status(200).json({
         message: "Sesja jest aktywna.",
         user: {
@@ -490,13 +489,32 @@ exports.checkSession = (req, res) => {
         }
     });
 };
-
+exports.refreshUser = (req, res) => {
+    const oldToken = req.cookies.token;
+    if (!oldToken) {
+        return res.status(401).json({ message: 'Brak tokena sesji' });
+    }
+    try {
+        const decoded = jwt.verify(oldToken, process.env.JWT_SECRET);
+        const newToken = jwt.sign({ _id: decoded._id, role: decoded.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.cookie('token', newToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+        res.status(200).json({ message: 'Token odświeżony pomyślnie' });
+    } catch (err) {
+        res.status(401).json({ message: 'Nieprawidłowy token' });
+    }
+};
 exports.logoutUser = (req, res) => {
-    // Usuwanie ciasteczka sesji
-    res.cookie('token', '', { 
+
+    res.cookie('token', '', {
         httpOnly: true,
-        secure: false,
-        expires: new Date(0) // Ustawienie daty wygaśnięcia na przeszłość, aby usunąć ciasteczko
+        secure: true,
+        sameSite: 'None',
+        expires: new Date(0)
     });
     res.status(200).json({ message: 'Wylogowano pomyślnie.' });
 };
@@ -545,7 +563,6 @@ exports.resetPasswordToken = async (req, res) => {
                 console.error("Błąd podczas wysyłania e-maila:", err);
                 res.status(500).send({ error: 'Wystąpił błąd podczas wysyłania e-maila z linkiem do resetowania hasła.' });
             } else {
-                console.log("Wysłano e-mail:", info.response);
                 res.send({ success: true, message: 'E-mail z linkiem do resetowania hasła został wysłany.' });
             }
         });
@@ -594,16 +611,12 @@ exports.resetPassword = async (req, res) => {
         user.resetPasswordExpires = undefined;
         await user.save();
 
-        console.log("Hasło zostało zresetowane dla użytkownika:", user.email);
-
         const usedTokenEntry = new UsedToken({
             token: token,
             userId: user._id,
             expiresAt: new Date(decoded.exp * 1000)
         });
         await usedTokenEntry.save();
-
-        console.log("Token zapisany jako zużyty dla użytkownika:", user.email);
 
         res.status(200).send("Hasło zostało zresetowane");
 
