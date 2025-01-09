@@ -464,10 +464,11 @@ exports.loginUser = async (req, res) => {
         res.status(200).json({
             message: 'Zalogowano pomyślnie',
             user: {
-                _id: user._id,
+                id: user._id,
                 userName: user.userName,
                 email: user.email,
-                role: user.__t
+                role: user.__t,
+                firstLogin: user.firstLogin
             }
         });
     } catch (error) {
@@ -484,8 +485,10 @@ exports.checkSession = (req, res) => {
         message: "Sesja jest aktywna.",
         user: {
             id: req.user._id,
-            name: req.user.userName,
-            role: req.user.__t
+            userName: req.user.userName,
+            role: req.user.__t,
+            firstLogin: req.user.firstLogin,
+            email: req.user.email
         }
     });
 };
@@ -648,6 +651,30 @@ exports.toggleUserStatus = async (req, res) => {
         res.status(500).json({ message: 'Błąd podczas przełączania statusu użytkownika', error: error.message });
     }
 };
+
+exports.toggleFirstLogin = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: 'Nieprawidłowe ID użytkownika' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Użytkownik nie został znaleziony' });
+        }
+
+        user.firstLogin = !user.firstLogin;
+
+        await user.save();
+
+        res.status(200).json({ message: 'Status użytkownika został pomyślnie przełączony', user });
+    } catch (error) {
+        res.status(500).json({ message: 'Błąd podczas przełączania statusu użytkownika', error: error.message });
+    }
+};
+
 
 exports.changeUserRole = async (req, res) => {
     const { newRole } = req.body;

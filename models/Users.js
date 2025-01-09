@@ -20,7 +20,16 @@ const phoneNumberSchema = new mongoose.Schema({
     validate: {
       validator: function (v) {
         // Sprawdzenie, czy kraj jest jednym z dozwolonych 
-        const allowedCountries = ['pl', 'PL', 'be', 'BE', 'de', 'DE', 'en', 'EN'];
+        const allowedCountries = [
+          'pl', 'PL',
+          'be', 'BE',
+          'de', 'DE',
+          'en', 'EN',
+          'fr', 'FR',
+          'uk', 'UK',
+          'ar', 'AR',
+          'ro', 'RO'
+        ];
         return allowedCountries.includes(v);
       },
       message: props => `${props.value} nie jest dozwolonym krajem!`
@@ -47,6 +56,16 @@ const phoneNumberSchema = new mongoose.Schema({
           'DE': /^(\d{10}|\d{3} \d{7}|\d{3} \d{3} \d{4}|\d{3}-\d{7})$/,
           'en': /^(\d{10}|\d{4}-\d{3}-\d{3}|\d{4} \d{3} \d{3})$/,
           'EN': /^(\d{10}|\d{4}-\d{3}-\d{3}|\d{4} \d{3} \d{3})$/,
+          'nl': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'NL': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'fr': /^(\d{9}|\d{2} \d{2} \d{2} \d{2} \d{2}|\d{2}-\d{2}-\d{2}-\d{2}-\d{2})$/,
+          'FR': /^(\d{9}|\d{2} \d{2} \d{2} \d{2} \d{2}|\d{2}-\d{2}-\d{2}-\d{2}-\d{2})$/,
+          'uk': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'UK': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'ar': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'AR': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'ro': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
+          'RO': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/
         };
         return countryCodeMap[this.country] ? countryCodeMap[this.country].test(v) : false;
 
@@ -65,7 +84,17 @@ phoneNumberSchema.pre('save', function (next) {
     'de': '+49',
     'DE': '+49',
     'en': '+44',
-    'EN': '+44'
+    'EN': '+44',
+    'nl': '+31',
+    "NL": '+31',
+    'fr': '+33',
+    'FR': '+33',
+    'uk': '+380',
+    'UK': '+380',
+    'ar': '+966',
+    "AR": '+966',
+    "ro": "+40",
+    "RO": '+40'
   };
   if (countryCodeMap[this.country]) {
     this.code = countryCodeMap[this.country];
@@ -86,6 +115,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     validate: [validator.isEmail, 'Nieprawidłowy adres email']
+  },
+  firstLogin: {
+    type: Boolean,
+    default: true
   },
   phoneNumber: phoneNumberSchema,
   password: {
@@ -145,7 +178,7 @@ const userSchema = new mongoose.Schema({
   }],
   preferredLanguage: {
     type: String,
-    enum: ["en", "pl", "nl", "fr", "de"],
+    enum: ["en", "pl", "nl", "fr", "de", "ar", "ro", "uk"],
     default: "en"
   },
   statusUser: {

@@ -51,6 +51,9 @@ router.put('/users/:userId', authenticate, isRole(["Admin", "BigBoss"]), userCon
 //banowanie obanowywanie użytkownika
 router.patch("/user-toggle-status/:userId", authenticate, isRole(["Admin", "BigBoss"]), userController.toggleUserStatus);
 
+//usuwanie pierwszegoLogowania 
+router.patch('/firstLoginRemove/:userId', userController.toggleFirstLogin);
+
 //usuwanie użytkownika
 router.delete('/users/:userId', authenticate, isRole(["Admin", "BigBoss"]), userController.deleteUser);
 
