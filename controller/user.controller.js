@@ -466,6 +466,7 @@ exports.loginUser = async (req, res) => {
             user: {
                 id: user._id,
                 userName: user.userName,
+                lastName:user.userLastName,
                 email: user.email,
                 role: user.__t,
                 firstLogin: user.firstLogin
@@ -488,7 +489,8 @@ exports.checkSession = (req, res) => {
             userName: req.user.userName,
             role: req.user.__t,
             firstLogin: req.user.firstLogin,
-            email: req.user.email
+            email: req.user.email,
+            lastName:req.user.userLastName,
         }
     });
 };
