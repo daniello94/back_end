@@ -43,7 +43,7 @@ const phoneNumberSchema = new mongoose.Schema({
 
   number: {
     type: String,
-    required: true,
+    // required: true,
     validate: {
       validator: function (v) {
         // Sprawdzenie, czy numer komórkowy ma odpowiednią długość i format 

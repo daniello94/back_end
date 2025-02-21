@@ -70,6 +70,43 @@ async function sendVerificationEmail(userEmail, verificationToken) {
         console.error(`Błąd podczas wysyłania e-maila: ${error}`);
     }
 }
+async function sendActivationEmailWithCredentials(userEmail, verificationToken, password) {
+    let transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+            user: process.env.ADDRESS_EMAIL,
+            pass: process.env.EMAIL_PASSWORD
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+
+    const activationLink = `http://localhost:5173/verify?token=${verificationToken}`;
+    let mailContent = `<p>Witaj ${userEmail},</p>`;
+    mailContent += `<p>Aby aktywować swoje konto, kliknij w poniższy link: <a href="${activationLink}">${activationLink}</a></p>`;
+
+    mailContent += `<p><strong>Twoje dane logowania:</strong></p>`;
+    mailContent += `<p>Email: <strong>${userEmail}</strong></p>`;
+    mailContent += `<p>Hasło: <strong>${password}</strong></p>`;
+    mailContent += `<p>Zalecamy zmianę hasła po pierwszym logowaniu.</p>`;
+
+    mailContent += `<p>Pozdrawiamy,<br>Zespół</p>`;
+
+    const mailOptions = {
+        from: process.env.ADDRESS_EMAIL,
+        to: userEmail,
+        subject: "Aktywacja konta i dane logowania",
+        html: mailContent
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log("E-mail aktywacyjny z danymi logowania został wysłany.");
+    } catch (error) {
+        console.error(`Błąd podczas wysyłania e-maila: ${error}`);
+    }
+}
 
 exports.createBigBoss = async (req, res) => {
     try {
@@ -119,11 +156,11 @@ exports.verifyUser = async (req, res) => {
             return res.status(400).json({ message: 'Nieprawidłowy token weryfikacyjny' });
         }
         if (new Date() > user.tokenUsedAt) {
-            user.verificationToken = null; // opcjonalnie usuń wartość tokenu
+            user.verificationToken = null;
         }
 
         user.isVerified = true;
-        user.tokenUsedAt = new Date(); // Ustawienie czasu użycia tokena
+        user.tokenUsedAt = new Date();
         await user.save();
 
         res.status(200).json({ message: 'Konto zostało zweryfikowane pomyślnie' });
@@ -139,118 +176,85 @@ exports.createUser = async (req, res) => {
         const normalizedRole = role ? role.toLowerCase() : null;
         const reqUser = req.user;
 
-        if (normalizedRole === 'admin') {
-            if (!reqUser || reqUser.__t !== 'Admin') {
-                return res.status(403).json({ message: 'Brak uprawnień do utworzenia konta admin.' });
-            }
-        } else if (normalizedRole === 'big_boss') {
-        } else if (['boss', 'team_manager', 'employee'].includes(normalizedRole)) {
-            if (!reqUser || reqUser.__t !== 'BigBoss') {
-                return res.status(403).json({ message: 'Tylko zalogowany BigBoss może tworzyć te konta.' });
-            }
-        } else {
-            return res.status(400).json({ message: 'Nieprawidłowa rola użytkownika' });
+        if (!["big_boss", "boss", "team_manager", "employee"].includes(normalizedRole)) {
+            return res.status(400).json({ message: "Nieprawidłowa rola użytkownika" });
         }
 
-        let idCompany = null;
-        let user;
+        if (["boss", "team_manager", "employee"].includes(normalizedRole)) {
+            if (!reqUser || reqUser.__t !== "BigBoss") {
+                return res.status(403).json({ message: "Tylko zalogowany BigBoss może tworzyć te konta." });
+            }
 
-        if (['boss', 'team_manager', 'employee'].includes(normalizedRole)) {
             if (!bigBossEmail) {
-                return res.status(400).json({ message: 'Wymagane jest podanie emaila Big Bossa, aby przypisać idCompany' });
+                return res.status(400).json({ message: "Wymagane jest podanie emaila Big Bossa." });
             }
 
             const bigBoss = await BigBoss.findOne({ email: bigBossEmail });
-
             if (!bigBoss) {
-                return res.status(404).json({ message: 'Big Boss nie został znaleziony, nie można utworzyć użytkownika' });
+                return res.status(404).json({ message: "BigBoss nie został znaleziony." });
             }
 
             if (!bigBoss.idCompany) {
-                return res.status(400).json({ message: 'Big Boss nie ma przypisanego idCompany, nie można utworzyć użytkownika z tą rolą' });
+                return res.status(400).json({ message: "BigBoss nie ma przypisanego idCompany." });
             }
 
-            idCompany = bigBoss.idCompany;
-            rest.idCompany = idCompany;
+            rest.idCompany = bigBoss.idCompany;
         }
 
+        const verificationToken = crypto.randomBytes(16).toString("hex");
+        rest.verificationToken = verificationToken;
+
         let generatedPassword = null;
-        if (['boss', 'team_manager', 'employee'].includes(normalizedRole)) {
-            generatedPassword = crypto.randomBytes(8).toString('hex');
+        if (["boss", "team_manager", "employee"].includes(normalizedRole)) {
+            generatedPassword = crypto.randomBytes(8).toString("hex");
             rest.password = generatedPassword;
         }
+
+        let user;
         switch (normalizedRole) {
-            case 'admin':
-                user = new Admin(rest);
+            case "big_boss":
+                user = new BigBoss(rest);
                 break;
-            case 'boss':
+            case "boss":
                 user = new Boss(rest);
                 break;
-            case 'team_manager':
+            case "team_manager":
                 user = new TeamManager(rest);
                 break;
-            case 'employee':
+            case "employee":
                 user = new Employee(rest);
                 break;
-            default:
-                return res.status(400).json({ message: 'Nieprawidłowa rola użytkownika' });
         }
 
         await user.save();
 
-        if (['boss', 'team_manager', 'employee'].includes(normalizedRole)) {
-            const company = await Company.findById(idCompany);
-
+        if (["boss", "team_manager", "employee"].includes(normalizedRole)) {
+            const company = await Company.findById(rest.idCompany);
             if (!company) {
-                return res.status(404).json({ message: 'Firma nie została znaleziona, nie można zaktualizować informacji o pracownikach' });
+                return res.status(404).json({ message: "Firma nie została znaleziona." });
             }
 
             company.employees.push(user._id);
             await company.save();
         }
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.ADDRESS_EMAIL,
-                pass: process.env.EMAIL_PASSWORD
-            },
-            tls: {
-                rejectUnauthorized: false
-            }
-        });
 
-        const loginLink = `http://localhost:5173/login`;
-        let mailContent = `<p>Witaj ${user.email},</p>`;
-        mailContent += `<p>Twoje konto zostało utworzone. Aby się zalogować, przejdź pod adres: <a href="${loginLink}">${loginLink}</a></p>`;
-
-        if (generatedPassword) {
-            mailContent += `<p>Twoje tymczasowe hasło to: <strong>${generatedPassword}</strong></p>`;
-            mailContent += `<p>Zalecamy zmianę hasła po pierwszym zalogowaniu.</p>`;
+        if (normalizedRole === "big_boss") {
+            await sendVerificationEmail(user.email, verificationToken);
+        } else {
+            await sendActivationEmailWithCredentials(user.email, verificationToken, generatedPassword);
         }
 
-        mailContent += `<p>Pozdrawiamy,<br>Zespół</p>`;
-
-        const mailOptions = {
-            from: process.env.ADDRESS_EMAIL,
-            to: user.email,
-            subject: "Twoje konto zostało utworzone",
-            html: mailContent
-        };
-
-        transporter.sendMail(mailOptions, (err, info) => {
-            if (err) {
-                console.error("Błąd podczas wysyłania e-maila:", err);
-                return res.status(500).json({ message: 'Użytkownik utworzony, ale wystąpił błąd podczas wysyłania e-maila', error: err.message });
-            } else {
-                return res.status(201).json({ message: 'Użytkownik utworzony pomyślnie. Wysłano e-mail.', user });
-            }
+        return res.status(201).json({
+            message: "Użytkownik utworzony pomyślnie. Wysłano e-mail aktywacyjny.",
+            user
         });
 
     } catch (error) {
-        console.error('Błąd podczas tworzenia użytkownika:', error);
-        res.status(500).json({ message: 'Błąd podczas tworzenia użytkownika', error: error.message });
+        console.error("Błąd podczas tworzenia użytkownika:", error);
+        res.status(500).json({ message: "Błąd podczas tworzenia użytkownika", error: error.message });
     }
 };
+
 exports.deleteUser = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -466,10 +470,11 @@ exports.loginUser = async (req, res) => {
             user: {
                 id: user._id,
                 userName: user.userName,
-                lastName:user.userLastName,
+                lastName: user.userLastName,
                 email: user.email,
                 role: user.__t,
-                firstLogin: user.firstLogin
+                firstLogin: user.firstLogin,
+                idCompany: user.idCompany
             }
         });
     } catch (error) {
@@ -490,7 +495,8 @@ exports.checkSession = (req, res) => {
             role: req.user.__t,
             firstLogin: req.user.firstLogin,
             email: req.user.email,
-            lastName:req.user.userLastName,
+            lastName: req.user.userLastName,
+            idCompany: req.user.idCompany
         }
     });
 };
