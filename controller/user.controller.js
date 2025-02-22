@@ -419,7 +419,7 @@ exports.getUsersByRole = async (req, res) => {
         const users = await User.find({ __t: discriminatorRole });
 
         if (users.length === 0) {
-            return res.status(404).json({ message: 'Nie znaleziono użytkowników o podanej roli' });
+            return res.status(200).json({ message: 'Brak użytkowników o wskazanej roli', users: [] });
         }
 
         res.status(200).json({ message: `Lista użytkowników o roli ${role}`, users });
@@ -427,6 +427,7 @@ exports.getUsersByRole = async (req, res) => {
         res.status(500).json({ message: 'Błąd podczas pobierania użytkowników', error: error.message });
     }
 };
+
 
 exports.loginUser = async (req, res) => {
     try {
