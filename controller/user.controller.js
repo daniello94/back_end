@@ -396,38 +396,44 @@ exports.getUserById = async (req, res) => {
 
 exports.getUsersByRole = async (req, res) => {
     try {
-        const { role } = req.query;
+        const { role, companyId, sortKey = "userName", sortOrder = "asc" } = req.query;
+
+        if (!companyId) {
+            return res.status(400).json({ message: "Brak identyfikatora firmy" });
+        }
 
         let discriminatorRole;
         switch (role.toLowerCase()) {
-            case 'big_boss':
-                discriminatorRole = 'BigBoss';
+            case "big_boss":
+                discriminatorRole = "BigBoss";
                 break;
-            case 'boss':
-                discriminatorRole = 'Boss';
+            case "boss":
+                discriminatorRole = "Boss";
                 break;
-            case 'team_manager':
-                discriminatorRole = 'TeamManager';
+            case "team_manager":
+                discriminatorRole = "TeamManager";
                 break;
-            case 'employee':
-                discriminatorRole = 'Employee';
+            case "employee":
+                discriminatorRole = "Employee";
                 break;
             default:
-                return res.status(400).json({ message: 'Nieprawidłowa rola użytkownika' });
+                return res.status(400).json({ message: "Nieprawidłowa rola użytkownika" });
         }
 
-        const users = await User.find({ __t: discriminatorRole });
+        const sortConfig = {};
+        sortConfig[sortKey] = sortOrder === "asc" ? 1 : -1;
+
+        const users = await User.find({ __t: discriminatorRole, idCompany: companyId }).sort(sortConfig);
 
         if (users.length === 0) {
-            return res.status(200).json({ message: 'Brak użytkowników o wskazanej roli', users: [] });
+            return res.status(200).json({ message: "Brak użytkowników o wskazanej roli w tej firmie", users: [] });
         }
 
-        res.status(200).json({ message: `Lista użytkowników o roli ${role}`, users });
+        res.status(200).json({ message: `Lista użytkowników o roli ${role} w firmie ${companyId}`, users });
     } catch (error) {
-        res.status(500).json({ message: 'Błąd podczas pobierania użytkowników', error: error.message });
+        res.status(500).json({ message: "Błąd podczas pobierania użytkowników", error: error.message });
     }
 };
-
 
 exports.loginUser = async (req, res) => {
     try {
