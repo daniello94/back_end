@@ -60,4 +60,8 @@ router.delete('/users/:userId', authenticate, isRole(["Admin", "BigBoss"]), user
 // Trasa do weryfikacji użytkownika
 router.get('/verify', userController.verifyUser);
 
+//aktualizacja numeru telefonu 
+router.patch("/update-phone/:userId", authenticate, userController.updatePhoneNumber);
+
+
 module.exports = router;

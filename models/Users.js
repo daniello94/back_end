@@ -16,7 +16,6 @@ mongoose.connect(`mongodb://${process.env.DB_HOST}/${process.env.DB_NAME}`)
 const phoneNumberSchema = new mongoose.Schema({
   country: {
     type: String,
-    required: true,
     validate: {
       validator: function (v) {
         // Sprawdzenie, czy kraj jest jednym z dozwolonych 
@@ -28,7 +27,8 @@ const phoneNumberSchema = new mongoose.Schema({
           'fr', 'FR',
           'uk', 'UK',
           'ar', 'AR',
-          'ro', 'RO'
+          'ro', 'RO',
+          'nl', 'NL'
         ];
         return allowedCountries.includes(v);
       },
@@ -40,38 +40,8 @@ const phoneNumberSchema = new mongoose.Schema({
     required: false,
 
   },
-
   number: {
-    type: String,
-    // required: true,
-    validate: {
-      validator: function (v) {
-        // Sprawdzenie, czy numer komórkowy ma odpowiednią długość i format 
-        const countryCodeMap = {
-          'pl': /^(\d{9}|\d{3}-\d{3}-\d{3}|\d{3} \d{3} \d{3})$/,
-          'PL': /^(\d{9}|\d{3}-\d{3}-\d{3}|\d{3} \d{3} \d{3})$/,
-          'be': /^(\d{9}|\d{3}-\d{3}-\d{3}|\d{3} \d{3} \d{3})$/,
-          'BE': /^(\d{9}|\d{3}-\d{3}-\d{3}|\d{3} \d{3} \d{3})$/,
-          'de': /^(\d{10}|\d{3} \d{7}|\d{3} \d{3} \d{4}|\d{3}-\d{7})$/,
-          'DE': /^(\d{10}|\d{3} \d{7}|\d{3} \d{3} \d{4}|\d{3}-\d{7})$/,
-          'en': /^(\d{10}|\d{4}-\d{3}-\d{3}|\d{4} \d{3} \d{3})$/,
-          'EN': /^(\d{10}|\d{4}-\d{3}-\d{3}|\d{4} \d{3} \d{3})$/,
-          'nl': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'NL': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'fr': /^(\d{9}|\d{2} \d{2} \d{2} \d{2} \d{2}|\d{2}-\d{2}-\d{2}-\d{2}-\d{2})$/,
-          'FR': /^(\d{9}|\d{2} \d{2} \d{2} \d{2} \d{2}|\d{2}-\d{2}-\d{2}-\d{2}-\d{2})$/,
-          'uk': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'UK': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'ar': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'AR': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'ro': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/,
-          'RO': /^(\d{9}|\d{3} \d{3} \d{3}|\d{3}-\d{3}-\d{3})$/
-        };
-        return countryCodeMap[this.country] ? countryCodeMap[this.country].test(v) : false;
-
-      },
-      message: props => `${props.value} nie jest poprawnym numerem komórkowym!`
-    }
+    type: String
   }
 });
 // Dodanie middleware do ustawienia kodu kierunkowego na podstawie kraju 
@@ -127,6 +97,26 @@ const userSchema = new mongoose.Schema({
   },
   price: {
     type: Number
+  },
+  address: {
+    city: {
+      type: String
+    },
+    street: {
+      type: String
+    },
+    number: {
+      type: String
+    },
+    numberBox: {
+      type: String
+    },
+    zipCode: {
+      type: String
+    },
+    placePost: {
+      type: String
+    }
   },
   myHours: [{
     year: {

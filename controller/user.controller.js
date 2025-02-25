@@ -302,23 +302,44 @@ exports.updateUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'Użytkownik nie został znaleziony' });
         }
+
         if (updates.idCompany) {
             user.idCompany = updates.idCompany;
         }
+        if (updates.hasOwnProperty("address")) {
+            const { city, street, zipCode, number, numberBox, placePost } = updates.address;
 
+            if (
+                updates.address === null ||
+                city === "" || number === "" || zipCode === "" || placePost === "" 
+            ) {
+                user.address = null;
+            } else if (city  && zipCode) {
+                user.address = {
+                    city,
+                    street,
+                    zipCode,
+                    number,
+                    numberBox: numberBox || "",
+                    placePost,
+                };
+            }
+        }
         Object.keys(updates).forEach(key => {
-            if (key !== 'idCompany') {
+            if (key !== 'idCompany' && key !== 'address') {
                 user[key] = updates[key];
             }
         });
-        await user.save();
 
+        await user.save();
         res.status(200).json({ message: 'Użytkownik zaktualizowany pomyślnie', user });
 
     } catch (error) {
+        console.error("Błąd podczas aktualizacji użytkownika:", error);
         res.status(500).json({ message: 'Błąd podczas aktualizacji użytkownika', error: error.message });
     }
 };
+
 exports.addPlaceWork = async (req, res) => {
     try {
         const { userId, year, month, day, project } = req.body;
@@ -733,5 +754,31 @@ exports.changeUserRole = async (req, res) => {
         return res.status(500).send({ error: "Błąd serwera" });
     }
 };
+
+exports.updatePhoneNumber = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { phoneNumber } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "Użytkownik nie znaleziony" });
+        }
+        if (!phoneNumber || !phoneNumber.country || !phoneNumber.number) {
+            user.phoneNumber = null;
+            await user.save();
+            return res.status(200).json({ message: "Numer telefonu został usunięty", phoneNumber: null });
+        }
+        user.phoneNumber = phoneNumber;
+        await user.save();
+
+        res.status(200).json({ message: "Numer telefonu zaktualizowany", phoneNumber: user.phoneNumber });
+    } catch (error) {
+        console.error("Błąd podczas aktualizacji numeru telefonu:", error);
+        res.status(500).json({ message: "Błąd serwera", error: error.message });
+    }
+};
+
+
 
 
